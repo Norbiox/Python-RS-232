@@ -39,8 +39,11 @@ Created on Sun Feb 01 13:45:57 2015
 '***********************************************************************
 """
 
+import binascii
+import time
 from threading import Thread
-import serial, time, binascii
+
+import serial
 
 ### Globals ###
 #Change this value to modify polling rate. Currently 100 ms
@@ -120,7 +123,7 @@ class Host(object):
         """
         if cmd == 'Q':
             return 1
-        if cmd == '?' or cmd is 'H':
+        if cmd == '?' or cmd == 'H':
             return 2
 
         if cmd == 'V':
@@ -148,7 +151,7 @@ class Host(object):
             stopbits=serial.STOPBITS_ONE
         )
 
-        while ser.isOpen() and self.running:
+        while ser.is_open and self.running:
 
             # basic message   0      1     2      3      4      5     6         7
             #               start, len,  ack, bills,escrow,resv'd,  end, checksum
@@ -162,62 +165,60 @@ class Host(object):
                 msg[4] |= 0x20
 
             # Set the checksum
-            for byte in xrange(1, 6):
+            for byte in range(1, 6):
                 msg[7] ^= msg[byte]
 
 
             ser.write(msg)
             time.sleep(0.1)
 
-            out = ''
-            while ser.inWaiting() > 0:
+            out = bytearray()
+            while ser.in_waiting > 0:
                 out += ser.read(1)
             if out == '':
                 continue
 
-
             # With the exception of Stacked and Returned, only we can
             # only be in one state at once
             try:
-                status = Host.state_dict[ord(out[3])]
+                status = Host.state_dict[out[3]]
             except KeyError:
                 status = ''
-                print "unknown state dic key {:d}".format(ord(out[3]))
+                print("unknown state dict key {}".format(out[3]))
 
-            self.escrowed = ord(out[3]) & 4
+            self.escrowed = out[3] & 4
 
             # If there is no match, we get an empty string
             try:
-                status += Host.event_dict[ord(out[4]) & 1]
-                status += Host.event_dict[ord(out[4]) & 2]
-                status += Host.event_dict[ord(out[4]) & 4]
-                status += Host.event_dict[ord(out[4]) & 8]
+                status += Host.event_dict[out[4] & 1]
+                status += Host.event_dict[out[4] & 2]
+                status += Host.event_dict[out[4] & 4]
+                status += Host.event_dict[out[4] & 8]
             except KeyError:
-                print "unknown state dic key {:d}".format(ord(out[4]))
+                print("unknown state dict key {}".format(out[4]))
 
-            if ord(out[4]) & 0x10 != 0x10:
+            if out[4] & 0x10 != 0x10:
                 status += " CASSETTE MISSING"
 
             # Only update the status if it has changed
             if self.last_state != status:
-                print 'Acceptor status:', status
+                print('Acceptor status:', status)
                 self.last_state = status
 
             if self.verbose:
-                print ", ".join("0x{:02x}".format(ord(c)) for c in out)
+                print(", ".join("0x{:02x}".format(c) for c in out))
 
             # Print credit(s)
-            credit = (ord(out[5]) & 0x38) >> 3
+            credit = (out[5] & 0x38) >> 3
 
             if credit != 0:
-                if ord(out[3]) & 0x10:
-                    print "Bill credited: Bill#", credit
+                if out[3] & 0x10:
+                    print("Bill credited: Bill#", credit)
                     self.bill_count[credit] += 1
-                    print "Acceptor now holds: {:s}".format(
-                        binascii.hexlify(self.bill_count))
+                    print("Acceptor now holds: {}".format(binascii.hexlify(self.bill_count)))
 
             time.sleep(POLL_RATE)
 
-        print "port closed"
+        print("port closed")
         ser.close()
 

@@ -15,8 +15,8 @@ A Python RS-232 sample that uses the [PySerial library](http://pyserial.sourcefo
    - Or a DB9 RS-232 connection, USB UART cable of your choice
 
 ## Setup
-1. Install PySerial
-2. Ensure you have Python 2 or 3 installed, we use 2.7
+1. Ensure you have Python 3.9 or higher installed
+2. Install PySerial
 3. Ensure you communication cable is recognized by your OS.
    - If you chose the recommended harness, this is plug and play on Windows and Linux
    - On Mac, please see [FTDI Documentation](http://www.ftdichip.com/Support/Documents/InstallGuides/Mac_OS_X_Installation_Guide.pdf)
